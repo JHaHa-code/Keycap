@@ -17,7 +17,8 @@ export function Keyboard({ pressed, pressKey, releaseKey }: KeyboardProps) {
   const profile = useStore((s) => s.keycapProfile)
   const effects = useStore((s) => s.effects)
   const animationSpeed = useStore((s) => s.animationSpeed)
-  const accent = getSwitch(switchId).color
+  const switchColor = getSwitch(switchId).color
+  const accent = switchColor
 
   return (
     <div
@@ -37,6 +38,7 @@ export function Keyboard({ pressed, pressKey, releaseKey }: KeyboardProps) {
             keyDef={k}
             pressed={pressed[k.index]}
             accent={accent}
+            switchColor={switchColor}
             keyColor={keyColor}
             profile={profile}
             effects={effects}

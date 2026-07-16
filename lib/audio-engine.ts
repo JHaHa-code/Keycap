@@ -124,6 +124,59 @@ export class AudioEngine {
     return 1 + (Math.random() * 2 - 1) * spread
   }
 
+  /**
+   * A short filtered-noise burst — the building block of every clack, click
+   * and bump. Attack is near-instant so it reads as a percussive transient.
+   */
+  private burst(
+    dest: AudioNode,
+    t: number,
+    opts: { freq: number; q: number; bright: number; level: number; decay: number; snap?: boolean },
+  ) {
+    const ctx = this.ctx!
+    const src = ctx.createBufferSource()
+    src.buffer = this.noiseBuffer
+    const bp = ctx.createBiquadFilter()
+    bp.type = "bandpass"
+    bp.frequency.value = opts.freq
+    bp.Q.value = opts.q
+    const lp = ctx.createBiquadFilter()
+    lp.type = "lowpass"
+    lp.frequency.value = opts.bright
+    const g = ctx.createGain()
+    if (opts.snap) {
+      // Sharp click: instantaneous attack, very fast decay.
+      g.gain.setValueAtTime(opts.level, t)
+    } else {
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.exponentialRampToValueAtTime(opts.level, t + 0.0009)
+    }
+    g.gain.exponentialRampToValueAtTime(0.0001, t + opts.decay)
+    src.connect(bp)
+    bp.connect(lp)
+    lp.connect(g)
+    g.connect(dest)
+    src.start(t)
+    src.stop(t + opts.decay + 0.03)
+  }
+
+  /** Low sine reinforcement for a deep "thock" body under the clack. */
+  private thock(dest: AudioNode, t: number, freq: number, level: number, decay: number) {
+    const ctx = this.ctx!
+    const osc = ctx.createOscillator()
+    osc.type = "sine"
+    osc.frequency.setValueAtTime(freq * 1.6, t)
+    osc.frequency.exponentialRampToValueAtTime(freq, t + 0.02)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(level, t + 0.003)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + decay)
+    osc.connect(g)
+    g.connect(dest)
+    osc.start(t)
+    osc.stop(t + decay + 0.03)
+  }
+
   /** Play a single switch event (press or release). */
   play(sw: KeySwitch, opts: PlayOptions) {
     if (!this.ctx || !this.master || !this.noiseBuffer) return
@@ -131,6 +184,8 @@ export class AudioEngine {
     const now = ctx.currentTime
     const s = sw.sound
     const isPress = opts.press
+    const isLow = this.settings.quality === "low"
+    const isHigh = this.settings.quality === "high"
 
     // Voice output with stereo positioning.
     const voice = ctx.createGain()
@@ -139,68 +194,79 @@ export class AudioEngine {
     voice.connect(panner)
     panner.connect(this.master)
 
-    const velGain = 0.55 + opts.velocity * 0.45
-    const pitchMul = this.rand(this.settings.pitchRandom * 0.5)
-    const overall = s.gain * (isPress ? 1 : s.releaseGain) * velGain * this.rand(0.08)
-    voice.gain.value = overall
+    const velGain = 0.6 + opts.velocity * 0.4
+    const pitch = this.rand(this.settings.pitchRandom * 0.4)
+    voice.gain.value = s.gain * velGain * this.rand(0.06)
 
-    const isLow = this.settings.quality === "low"
-
-    // --- Body / bottom-out resonance (filtered noise burst) ---
-    const body = ctx.createBufferSource()
-    body.buffer = this.noiseBuffer
-    const bodyFilter = ctx.createBiquadFilter()
-    bodyFilter.type = "bandpass"
-    bodyFilter.frequency.value = s.bodyFreq * pitchMul * (isPress ? 1 : 1.15)
-    bodyFilter.Q.value = 3.5
-    const tone = ctx.createBiquadFilter()
-    tone.type = "lowpass"
-    tone.frequency.value = s.brightness * (0.7 + opts.velocity * 0.3)
-    const bodyGain = ctx.createGain()
-    const decay = s.bodyDecay * (isPress ? 1 : 0.7)
-    bodyGain.gain.setValueAtTime(0.0001, now)
-    bodyGain.gain.exponentialRampToValueAtTime(0.9, now + 0.002)
-    bodyGain.gain.exponentialRampToValueAtTime(0.0001, now + decay)
-    body.connect(bodyFilter)
-    bodyFilter.connect(tone)
-    tone.connect(bodyGain)
-    bodyGain.connect(voice)
-    body.start(now)
-    body.stop(now + decay + 0.05)
-
-    // --- Click transient (clicky/tactile) ---
-    if (s.clickAmount > 0.05 && !isLow) {
-      const click = ctx.createBufferSource()
-      click.buffer = this.noiseBuffer
-      const clickFilter = ctx.createBiquadFilter()
-      clickFilter.type = "bandpass"
-      clickFilter.frequency.value = s.clickFreq * pitchMul
-      clickFilter.Q.value = 1.6
-      const clickGain = ctx.createGain()
-      const clickAmt = s.clickAmount * (isPress ? 1 : 0.4)
-      const clickDur = 0.018
-      clickGain.gain.setValueAtTime(clickAmt, now)
-      clickGain.gain.exponentialRampToValueAtTime(0.0001, now + clickDur)
-      click.connect(clickFilter)
-      clickFilter.connect(clickGain)
-      clickGain.connect(voice)
-      click.start(now)
-      click.stop(now + clickDur + 0.02)
-    }
-
-    // --- Spring ping (subtle high resonance) ---
-    if (s.spring > 0.02 && this.settings.quality === "high") {
-      const ping = ctx.createOscillator()
-      ping.type = "triangle"
-      ping.frequency.value = (1800 + Math.random() * 900) * pitchMul
-      const pingGain = ctx.createGain()
-      const pingDur = 0.05 + Math.random() * 0.04
-      pingGain.gain.setValueAtTime(s.spring * 0.3, now + 0.004)
-      pingGain.gain.exponentialRampToValueAtTime(0.0001, now + pingDur)
-      ping.connect(pingGain)
-      pingGain.connect(voice)
-      ping.start(now + 0.004)
-      ping.stop(now + pingDur + 0.02)
+    if (isPress) {
+      // --- Down-stroke ---------------------------------------------------
+      // 1. Sharp click element (clicky switches) fires first.
+      if (s.click > 0.05 && !isLow) {
+        this.burst(voice, now, {
+          freq: s.clickFreq * pitch,
+          q: 1.3,
+          bright: 12000,
+          level: s.click * 0.9,
+          decay: 0.006,
+          snap: true,
+        })
+      }
+      // 2. Tactile bump "tick" (tactile switches) just before bottom-out.
+      if (s.bump > 0.05 && !isLow) {
+        this.burst(voice, now, {
+          freq: 900 * pitch,
+          q: 2,
+          bright: s.clackBright * 0.8,
+          level: s.bump * 0.5,
+          decay: 0.012,
+        })
+      }
+      // 3. The main bottom-out clack.
+      const clackAt = now + (s.click > 0.05 ? 0.004 : 0)
+      this.burst(voice, clackAt, {
+        freq: s.clackFreq * pitch,
+        q: 1.8,
+        bright: s.clackBright * (0.75 + opts.velocity * 0.25),
+        level: s.clackLevel,
+        decay: s.clackDecay,
+      })
+      // 4. Deep sine body for thocky switches.
+      if (s.body > 0.03) {
+        this.thock(voice, clackAt, s.clackFreq * 0.7 * pitch, s.body * 0.5, s.clackDecay * 1.6)
+      }
+      // 5. Spring ping.
+      if (s.spring > 0.02 && isHigh) {
+        const ping = ctx.createOscillator()
+        ping.type = "triangle"
+        ping.frequency.value = (1900 + Math.random() * 900) * pitch
+        const pingGain = ctx.createGain()
+        const pingDur = 0.05 + Math.random() * 0.04
+        pingGain.gain.setValueAtTime(s.spring * 0.28, now + 0.005)
+        pingGain.gain.exponentialRampToValueAtTime(0.0001, now + pingDur)
+        ping.connect(pingGain)
+        pingGain.connect(voice)
+        ping.start(now + 0.005)
+        ping.stop(now + pingDur + 0.02)
+      }
+    } else {
+      // --- Up-stroke (top-out): lighter, tighter, a touch brighter --------
+      if (s.releaseClick > 0.05 && !isLow) {
+        this.burst(voice, now, {
+          freq: s.clickFreq * 0.9 * pitch,
+          q: 1.3,
+          bright: 11000,
+          level: s.releaseClick * 0.8,
+          decay: 0.005,
+          snap: true,
+        })
+      }
+      this.burst(voice, now + (s.releaseClick > 0.05 ? 0.003 : 0), {
+        freq: s.clackFreq * 1.25 * pitch,
+        q: 1.8,
+        bright: s.clackBright * 1.05,
+        level: s.clackLevel * s.topLevel,
+        decay: s.clackDecay * 0.6,
+      })
     }
   }
 }

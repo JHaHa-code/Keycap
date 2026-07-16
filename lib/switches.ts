@@ -1,22 +1,30 @@
 export type SwitchType = "linear" | "tactile" | "clicky" | "silent" | "topre"
 
 export interface SwitchSound {
-  /** Fundamental frequency of the bottom-out "body" tone (Hz). Lower = thockier. */
-  bodyFreq: number
-  /** How long the body resonance rings out (seconds). */
-  bodyDecay: number
-  /** Lowpass cutoff applied to the whole press — controls brightness (Hz). */
-  brightness: number
-  /** Amount of sharp click transient (0 = none, 1 = very clicky). */
-  clickAmount: number
+  /** Dominant resonance of the bottom-out "clack" (Hz). Low = thocky, high = clacky. */
+  clackFreq: number
+  /** How long the clack rings out (seconds). Short = tight, long = resonant. */
+  clackDecay: number
+  /** Lowpass cutoff for the clack (Hz). Low = muted/dampened, high = bright. */
+  clackBright: number
+  /** Loudness of the bottom-out clack. */
+  clackLevel: number
+  /** Low sine reinforcement for a deep "thock" body (0 = none, 1 = strong). */
+  body: number
+  /** Sharpness of the click element on the down-stroke (0 = none, 1 = very clicky). */
+  click: number
   /** Bandpass center of the click transient (Hz). */
   clickFreq: number
+  /** Click on the up-stroke too — gives clicky switches their double "찰칵찰칵" feel. */
+  releaseClick: number
+  /** Tactile bump "tick" just before bottom-out (0 = none, 1 = strong). */
+  bump: number
+  /** Loudness of the up-stroke (top-out) relative to the press. */
+  topLevel: number
+  /** High-frequency spring ping (0 = none). */
+  spring: number
   /** Overall loudness multiplier for this switch. */
   gain: number
-  /** Loudness of the up-stroke (release) sound relative to the press. */
-  releaseGain: number
-  /** Extra high-frequency "spring ping". 0 = none. */
-  spring: number
 }
 
 export interface KeySwitch {
@@ -24,7 +32,7 @@ export interface KeySwitch {
   name: string
   brand: string
   type: SwitchType
-  /** Accent color used for the keycap legend + selector chip. */
+  /** Accent color used for the keycap legend, cross stem, and selector chip. */
   color: string
   /** Vibration duration on mobile (ms). */
   haptic: number
@@ -42,7 +50,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#3b82f6",
     haptic: 25,
     force: 60,
-    sound: { bodyFreq: 320, bodyDecay: 0.09, brightness: 6500, clickAmount: 0.95, clickFreq: 3400, gain: 1, releaseGain: 0.55, spring: 0.25 },
+    // Sharp, bright single click then a mid clack — the classic "찰칵".
+    sound: { clackFreq: 300, clackDecay: 0.03, clackBright: 6200, clackLevel: 0.6, body: 0.1, click: 0.95, clickFreq: 3900, releaseClick: 0.2, bump: 0, topLevel: 0.55, spring: 0.22, gain: 1 },
   },
   {
     id: "cherry-red",
@@ -52,7 +61,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#ef4444",
     haptic: 12,
     force: 45,
-    sound: { bodyFreq: 240, bodyDecay: 0.07, brightness: 4200, clickAmount: 0.12, clickFreq: 2200, gain: 0.85, releaseGain: 0.4, spring: 0.05 },
+    // Quiet, smooth, muted bottom-out. No click at all.
+    sound: { clackFreq: 250, clackDecay: 0.024, clackBright: 3200, clackLevel: 0.42, body: 0.15, click: 0, clickFreq: 2200, releaseClick: 0, bump: 0, topLevel: 0.34, spring: 0.03, gain: 0.8 },
   },
   {
     id: "cherry-brown",
@@ -62,7 +72,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#a16207",
     haptic: 18,
     force: 55,
-    sound: { bodyFreq: 270, bodyDecay: 0.08, brightness: 5000, clickAmount: 0.4, clickFreq: 2600, gain: 0.9, releaseGain: 0.45, spring: 0.1 },
+    // Soft tactile bump then a mid clack — no sharp click.
+    sound: { clackFreq: 265, clackDecay: 0.027, clackBright: 4200, clackLevel: 0.5, body: 0.12, click: 0, clickFreq: 2600, releaseClick: 0, bump: 0.38, topLevel: 0.42, spring: 0.06, gain: 0.9 },
   },
   {
     id: "cherry-black",
@@ -72,7 +83,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#404040",
     haptic: 20,
     force: 60,
-    sound: { bodyFreq: 210, bodyDecay: 0.075, brightness: 3600, clickAmount: 0.1, clickFreq: 1900, gain: 0.9, releaseGain: 0.4, spring: 0.04 },
+    // Deep, heavy, dark linear thock.
+    sound: { clackFreq: 175, clackDecay: 0.032, clackBright: 2800, clackLevel: 0.6, body: 0.4, click: 0, clickFreq: 1900, releaseClick: 0, bump: 0, topLevel: 0.36, spring: 0.03, gain: 0.9 },
   },
   {
     id: "cherry-silver",
@@ -82,7 +94,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#9ca3af",
     haptic: 10,
     force: 45,
-    sound: { bodyFreq: 300, bodyDecay: 0.06, brightness: 4800, clickAmount: 0.15, clickFreq: 2400, gain: 0.8, releaseGain: 0.38, spring: 0.06 },
+    // Fast, light, short speed-switch tick.
+    sound: { clackFreq: 300, clackDecay: 0.018, clackBright: 3900, clackLevel: 0.4, body: 0.08, click: 0, clickFreq: 2400, releaseClick: 0, bump: 0, topLevel: 0.34, spring: 0.05, gain: 0.78 },
   },
   {
     id: "cherry-silent-red",
@@ -92,7 +105,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#f87171",
     haptic: 8,
     force: 45,
-    sound: { bodyFreq: 190, bodyDecay: 0.05, brightness: 2600, clickAmount: 0.04, clickFreq: 1500, gain: 0.55, releaseGain: 0.25, spring: 0 },
+    // Heavily dampened — a soft muffled thud, almost no highs.
+    sound: { clackFreq: 200, clackDecay: 0.016, clackBright: 1800, clackLevel: 0.26, body: 0.18, click: 0, clickFreq: 1500, releaseClick: 0, bump: 0, topLevel: 0.24, spring: 0, gain: 0.6 },
   },
   {
     id: "cherry-silent-black",
@@ -102,7 +116,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#525252",
     haptic: 10,
     force: 60,
-    sound: { bodyFreq: 170, bodyDecay: 0.05, brightness: 2300, clickAmount: 0.03, clickFreq: 1300, gain: 0.55, releaseGain: 0.22, spring: 0 },
+    // Deepest, most muffled silent thud.
+    sound: { clackFreq: 165, clackDecay: 0.018, clackBright: 1600, clackLevel: 0.3, body: 0.28, click: 0, clickFreq: 1300, releaseClick: 0, bump: 0, topLevel: 0.22, spring: 0, gain: 0.62 },
   },
   {
     id: "gateron-yellow",
@@ -112,7 +127,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#eab308",
     haptic: 12,
     force: 50,
-    sound: { bodyFreq: 250, bodyDecay: 0.08, brightness: 4400, clickAmount: 0.1, clickFreq: 2100, gain: 0.9, releaseGain: 0.44, spring: 0.05 },
+    // Smooth, slightly thocky budget-favorite linear.
+    sound: { clackFreq: 220, clackDecay: 0.03, clackBright: 3500, clackLevel: 0.55, body: 0.25, click: 0, clickFreq: 2100, releaseClick: 0, bump: 0, topLevel: 0.4, spring: 0.03, gain: 0.9 },
   },
   {
     id: "gateron-ink-black",
@@ -122,7 +138,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#1f2937",
     haptic: 16,
     force: 60,
-    sound: { bodyFreq: 200, bodyDecay: 0.095, brightness: 3800, clickAmount: 0.12, clickFreq: 1800, gain: 0.95, releaseGain: 0.5, spring: 0.05 },
+    // Deep, rounded, premium "thock".
+    sound: { clackFreq: 165, clackDecay: 0.038, clackBright: 3000, clackLevel: 0.62, body: 0.5, click: 0, clickFreq: 1800, releaseClick: 0, bump: 0, topLevel: 0.44, spring: 0.03, gain: 0.95 },
   },
   {
     id: "akko-cream-yellow",
@@ -132,7 +149,7 @@ export const SWITCHES: KeySwitch[] = [
     color: "#fbbf24",
     haptic: 12,
     force: 50,
-    sound: { bodyFreq: 230, bodyDecay: 0.085, brightness: 4000, clickAmount: 0.1, clickFreq: 2000, gain: 0.9, releaseGain: 0.46, spring: 0.05 },
+    sound: { clackFreq: 230, clackDecay: 0.03, clackBright: 3400, clackLevel: 0.54, body: 0.28, click: 0, clickFreq: 2000, releaseClick: 0, bump: 0, topLevel: 0.42, spring: 0.03, gain: 0.9 },
   },
   {
     id: "akko-jelly-pink",
@@ -142,7 +159,7 @@ export const SWITCHES: KeySwitch[] = [
     color: "#ec4899",
     haptic: 12,
     force: 45,
-    sound: { bodyFreq: 260, bodyDecay: 0.08, brightness: 4600, clickAmount: 0.14, clickFreq: 2300, gain: 0.88, releaseGain: 0.44, spring: 0.06 },
+    sound: { clackFreq: 260, clackDecay: 0.026, clackBright: 4000, clackLevel: 0.5, body: 0.15, click: 0, clickFreq: 2300, releaseClick: 0, bump: 0, topLevel: 0.4, spring: 0.05, gain: 0.86 },
   },
   {
     id: "kailh-box-white",
@@ -152,7 +169,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#e5e7eb",
     haptic: 24,
     force: 50,
-    sound: { bodyFreq: 340, bodyDecay: 0.085, brightness: 7000, clickAmount: 1, clickFreq: 3800, gain: 1, releaseGain: 0.6, spring: 0.3 },
+    // Crispest click — snaps on BOTH down and up-stroke ("찰칵찰칵").
+    sound: { clackFreq: 340, clackDecay: 0.026, clackBright: 7800, clackLevel: 0.6, body: 0.08, click: 1, clickFreq: 4700, releaseClick: 0.75, bump: 0, topLevel: 0.6, spring: 0.28, gain: 1 },
   },
   {
     id: "holy-panda",
@@ -162,7 +180,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#f59e0b",
     haptic: 22,
     force: 67,
-    sound: { bodyFreq: 220, bodyDecay: 0.1, brightness: 4800, clickAmount: 0.5, clickFreq: 2700, gain: 1, releaseGain: 0.5, spring: 0.12 },
+    // Big, snappy tactile bump into a full clack — no click element.
+    sound: { clackFreq: 225, clackDecay: 0.036, clackBright: 4800, clackLevel: 0.72, body: 0.3, click: 0, clickFreq: 2700, releaseClick: 0, bump: 0.7, topLevel: 0.5, spring: 0.08, gain: 1 },
   },
   {
     id: "ttc-gold-pink",
@@ -172,7 +191,7 @@ export const SWITCHES: KeySwitch[] = [
     color: "#f472b6",
     haptic: 12,
     force: 37,
-    sound: { bodyFreq: 280, bodyDecay: 0.075, brightness: 5000, clickAmount: 0.12, clickFreq: 2500, gain: 0.85, releaseGain: 0.42, spring: 0.06 },
+    sound: { clackFreq: 280, clackDecay: 0.024, clackBright: 4400, clackLevel: 0.46, body: 0.12, click: 0, clickFreq: 2500, releaseClick: 0, bump: 0, topLevel: 0.38, spring: 0.05, gain: 0.82 },
   },
   {
     id: "ttc-frozen",
@@ -182,7 +201,7 @@ export const SWITCHES: KeySwitch[] = [
     color: "#38bdf8",
     haptic: 11,
     force: 45,
-    sound: { bodyFreq: 300, bodyDecay: 0.07, brightness: 5400, clickAmount: 0.13, clickFreq: 2600, gain: 0.85, releaseGain: 0.42, spring: 0.07 },
+    sound: { clackFreq: 300, clackDecay: 0.022, clackBright: 4800, clackLevel: 0.46, body: 0.12, click: 0, clickFreq: 2600, releaseClick: 0, bump: 0, topLevel: 0.38, spring: 0.06, gain: 0.82 },
   },
   {
     id: "outemu-blue",
@@ -192,7 +211,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#2563eb",
     haptic: 25,
     force: 60,
-    sound: { bodyFreq: 330, bodyDecay: 0.09, brightness: 6200, clickAmount: 0.9, clickFreq: 3200, gain: 0.95, releaseGain: 0.55, spring: 0.22 },
+    // Slightly lower, chunkier click than Cherry Blue.
+    sound: { clackFreq: 290, clackDecay: 0.032, clackBright: 5600, clackLevel: 0.62, body: 0.14, click: 0.88, clickFreq: 3300, releaseClick: 0.18, bump: 0, topLevel: 0.52, spring: 0.18, gain: 0.95 },
   },
   {
     id: "zealios",
@@ -202,7 +222,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#7c3aed",
     haptic: 20,
     force: 65,
-    sound: { bodyFreq: 240, bodyDecay: 0.09, brightness: 5200, clickAmount: 0.45, clickFreq: 2800, gain: 0.92, releaseGain: 0.48, spring: 0.1 },
+    // Sharp, rounded tactile bump.
+    sound: { clackFreq: 240, clackDecay: 0.03, clackBright: 5000, clackLevel: 0.58, body: 0.2, click: 0, clickFreq: 2800, releaseClick: 0, bump: 0.55, topLevel: 0.46, spring: 0.07, gain: 0.92 },
   },
   {
     id: "boba-u4t",
@@ -212,7 +233,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#78716c",
     haptic: 20,
     force: 62,
-    sound: { bodyFreq: 200, bodyDecay: 0.11, brightness: 4600, clickAmount: 0.55, clickFreq: 2500, gain: 1, releaseGain: 0.5, spring: 0.1 },
+    // Strong "thocky" tactile — deep bump and clack.
+    sound: { clackFreq: 190, clackDecay: 0.04, clackBright: 4200, clackLevel: 0.68, body: 0.38, click: 0, clickFreq: 2500, releaseClick: 0, bump: 0.65, topLevel: 0.48, spring: 0.07, gain: 1 },
   },
   {
     id: "topre",
@@ -222,7 +244,8 @@ export const SWITCHES: KeySwitch[] = [
     color: "#14b8a6",
     haptic: 30,
     force: 45,
-    sound: { bodyFreq: 180, bodyDecay: 0.13, brightness: 3200, clickAmount: 0.2, clickFreq: 1600, gain: 0.95, releaseGain: 0.6, spring: 0.15 },
+    // Rubber-dome "thock" — deep, soft, rounded with a gentle bump.
+    sound: { clackFreq: 165, clackDecay: 0.05, clackBright: 2900, clackLevel: 0.62, body: 0.55, click: 0, clickFreq: 1600, releaseClick: 0, bump: 0.3, topLevel: 0.55, spring: 0.1, gain: 0.95 },
   },
 ]
 

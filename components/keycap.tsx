@@ -4,12 +4,13 @@ import { memo, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import type { KeyDef } from "@/lib/keymap"
 import type { KeycapProfile } from "@/lib/store"
-import { cn } from "@/lib/utils"
 
 interface KeycapProps {
   keyDef: KeyDef
   pressed: boolean
   accent: string
+  /** The switch's signature color — shown on the cross stem inside the housing. */
+  switchColor: string
   keyColor: string
   profile: KeycapProfile
   effects: boolean
@@ -19,32 +20,37 @@ interface KeycapProps {
 }
 
 /** Per-profile sculpt tuning: press depth (px) and cap height feel. */
-const PROFILE: Record<KeycapProfile, { depth: number; height: number; topInset: number; round: number }> = {
-  GMK: { depth: 8, height: 14, topInset: 10, round: 12 },
-  Cherry: { depth: 8, height: 12, topInset: 10, round: 12 },
-  PBT: { depth: 8, height: 14, topInset: 11, round: 12 },
-  ABS: { depth: 8, height: 13, topInset: 10, round: 12 },
-  OEM: { depth: 9, height: 16, topInset: 10, round: 12 },
-  SA: { depth: 10, height: 20, topInset: 14, round: 16 },
-  XDA: { depth: 7, height: 16, topInset: 12, round: 14 },
-  DSA: { depth: 6, height: 12, topInset: 13, round: 16 },
+const PROFILE: Record<KeycapProfile, { depth: number; height: number; round: number }> = {
+  GMK: { depth: 8, height: 14, round: 12 },
+  Cherry: { depth: 8, height: 12, round: 12 },
+  PBT: { depth: 8, height: 14, round: 12 },
+  ABS: { depth: 8, height: 13, round: 12 },
+  OEM: { depth: 9, height: 16, round: 12 },
+  SA: { depth: 10, height: 20, round: 16 },
+  XDA: { depth: 7, height: 16, round: 14 },
+  DSA: { depth: 6, height: 12, round: 16 },
 }
 
-/** Pick a readable legend color for a given keycap fill. */
-function legendColor(hex: string): string {
-  const c = hex.replace("#", "")
-  if (c.length < 6) return "#111"
-  const r = parseInt(c.slice(0, 2), 16)
-  const g = parseInt(c.slice(2, 4), 16)
-  const b = parseInt(c.slice(4, 6), 16)
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return lum > 0.6 ? "#1a1a1a" : "#f5f5f5"
+/** The colored MX-style "+" cross stem that sits inside the switch housing. */
+function CrossStem({ color }: { color: string }) {
+  const bar = "absolute rounded-[2px]"
+  const fill = `linear-gradient(150deg, color-mix(in oklab, ${color} 78%, #fff) 0%, ${color} 45%, color-mix(in oklab, ${color} 70%, #000) 100%)`
+  const shadow = "0 1px 2px rgba(0,0,0,0.45), inset 0 1px 1px rgba(255,255,255,0.35)"
+  return (
+    <div className="absolute left-1/2 top-1/2 h-[62%] w-[62%] -translate-x-1/2 -translate-y-1/2" aria-hidden>
+      {/* vertical bar */}
+      <span className={`${bar} left-1/2 top-0 h-full w-[26%] -translate-x-1/2`} style={{ background: fill, boxShadow: shadow }} />
+      {/* horizontal bar */}
+      <span className={`${bar} left-0 top-1/2 h-[26%] w-full -translate-y-1/2`} style={{ background: fill, boxShadow: shadow }} />
+    </div>
+  )
 }
 
 function KeycapImpl({
   keyDef,
   pressed,
   accent,
+  switchColor,
   keyColor,
   profile,
   effects,
@@ -54,7 +60,6 @@ function KeycapImpl({
 }: KeycapProps) {
   const [ripples, setRipples] = useState<number[]>([])
   const p = PROFILE[profile]
-  const legend = legendColor(keyColor)
 
   const handleDown = (e: React.PointerEvent) => {
     e.preventDefault()
@@ -79,13 +84,33 @@ function KeycapImpl({
 
   return (
     <div className="relative select-none" style={{ perspective: 700 }}>
-      {/* Fixed key well / housing shadow that the cap sinks into */}
+      {/* --- Switch housing (fixed): dark socket with the colored cross stem --- */}
       <div
-        className="absolute inset-0 rounded-2xl"
-        style={{ background: "color-mix(in oklab, var(--foreground) 8%, transparent)", transform: `translateY(${p.height}px)` }}
+        className="absolute inset-0 flex items-center justify-center rounded-2xl"
+        style={{
+          background: "linear-gradient(180deg, #2a2a30 0%, #17171b 100%)",
+          boxShadow: "inset 0 2px 6px rgba(0,0,0,0.7), inset 0 -1px 2px rgba(255,255,255,0.06)",
+          transform: `translateY(${p.height}px)`,
+        }}
         aria-hidden
-      />
+      >
+        {/* Recessed plate around the stem */}
+        <div
+          className="absolute inset-[14%] rounded-xl"
+          style={{ background: "radial-gradient(120% 120% at 50% 30%, #34343c 0%, #1c1c21 70%)", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.6)" }}
+        />
+        {/* Glow behind the stem when pressed */}
+        <motion.div
+          className="absolute inset-[18%] rounded-lg"
+          initial={false}
+          animate={{ opacity: pressed ? 0.9 : 0.25 }}
+          transition={{ duration: 0.12 }}
+          style={{ background: `radial-gradient(circle at 50% 50%, ${switchColor}, transparent 70%)`, filter: "blur(4px)" }}
+        />
+        <CrossStem color={switchColor} />
+      </div>
 
+      {/* --- Translucent keycap that sinks onto the switch --- */}
       <motion.button
         type="button"
         aria-label={`Key ${keyDef.legend}`}
@@ -98,49 +123,49 @@ function KeycapImpl({
         animate={{
           y: pressed ? p.depth : 0,
           boxShadow: pressed
-            ? `0 ${p.height - p.depth}px 0 -1px color-mix(in oklab, ${keyColor} 55%, #000), 0 4px 8px rgba(0,0,0,0.25)`
-            : `0 ${p.height}px 0 -1px color-mix(in oklab, ${keyColor} 55%, #000), 0 14px 22px rgba(0,0,0,0.32)`,
+            ? `0 ${p.height - p.depth}px 0 -2px rgba(120,120,130,0.35), 0 3px 8px rgba(0,0,0,0.3)`
+            : `0 ${p.height}px 0 -2px rgba(120,120,130,0.35), 0 14px 22px rgba(0,0,0,0.3)`,
         }}
         transition={spring}
-        className="relative flex aspect-square w-full items-center justify-center overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+        className="relative flex aspect-square w-full items-center justify-center overflow-hidden border outline-none backdrop-blur-[3px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
         style={{
           borderRadius: p.round,
-          background: `linear-gradient(180deg, color-mix(in oklab, ${keyColor} 88%, #fff) 0%, ${keyColor} 42%, color-mix(in oklab, ${keyColor} 82%, #000) 100%)`,
+          borderColor: "rgba(255,255,255,0.35)",
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 45%, rgba(255,255,255,0.03) 100%)",
         }}
       >
-        {/* Sculpted top surface */}
-        <span
-          className="pointer-events-none absolute rounded-[10px]"
-          style={{
-            inset: p.topInset,
-            background: `radial-gradient(120% 90% at 50% 18%, color-mix(in oklab, ${keyColor} 96%, #fff) 0%, ${keyColor} 55%, color-mix(in oklab, ${keyColor} 90%, #000) 100%)`,
-            boxShadow: "inset 0 1px 2px rgba(255,255,255,0.55), inset 0 -3px 6px rgba(0,0,0,0.18)",
-          }}
-          aria-hidden
-        />
+        {/* Faint keycap color tint (kept low so the stem shows through) */}
+        <span className="pointer-events-none absolute inset-0" style={{ background: keyColor, opacity: 0.12, borderRadius: p.round }} aria-hidden />
         {/* Top light reflection */}
         <span
-          className="pointer-events-none absolute left-0 right-0 top-0 h-1/3 rounded-t-[12px]"
-          style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.4), transparent)" }}
+          className="pointer-events-none absolute inset-x-0 top-0 h-2/5"
+          style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.5), transparent)", borderRadius: `${p.round}px ${p.round}px 0 0` }}
+          aria-hidden
+        />
+        {/* Inner edge sheen */}
+        <span
+          className="pointer-events-none absolute inset-[6%] rounded-[8px]"
+          style={{ boxShadow: "inset 0 1px 1px rgba(255,255,255,0.4), inset 0 -6px 10px rgba(0,0,0,0.15)" }}
           aria-hidden
         />
 
         {/* Legend */}
         <span
-          className="relative z-10 font-mono text-2xl font-semibold tracking-tight sm:text-3xl"
-          style={{ color: legend, textShadow: legend.startsWith("#f") ? "0 1px 2px rgba(0,0,0,0.4)" : "0 1px 1px rgba(255,255,255,0.4)" }}
+          className="relative z-10 font-mono text-2xl font-semibold tracking-tight drop-shadow-sm sm:text-3xl"
+          style={{ color: "color-mix(in oklab, var(--foreground) 82%, transparent)", textShadow: "0 1px 2px rgba(255,255,255,0.35)" }}
         >
           {keyDef.legend}
         </span>
 
-        {/* Glow accent when pressed */}
+        {/* Accent glow when pressed */}
         {effects && (
           <motion.span
-            className="pointer-events-none absolute inset-0 rounded-[12px]"
+            className="pointer-events-none absolute inset-0"
             initial={false}
-            animate={{ opacity: pressed ? 0.6 : 0 }}
+            animate={{ opacity: pressed ? 0.55 : 0 }}
             transition={{ duration: 0.12 }}
-            style={{ boxShadow: `inset 0 0 24px 2px ${accent}`, background: `radial-gradient(60% 60% at 50% 50%, ${accent}22, transparent)` }}
+            style={{ borderRadius: p.round, boxShadow: `inset 0 0 22px 2px ${accent}` }}
             aria-hidden
           />
         )}
@@ -167,6 +192,16 @@ function KeycapImpl({
   )
 }
 
-export const Keycap = memo(KeycapImpl, (a, b) => a.pressed === b.pressed && a.keyColor === b.keyColor && a.accent === b.accent && a.profile === b.profile && a.effects === b.effects && a.animationSpeed === b.animationSpeed)
+export const Keycap = memo(
+  KeycapImpl,
+  (a, b) =>
+    a.pressed === b.pressed &&
+    a.keyColor === b.keyColor &&
+    a.accent === b.accent &&
+    a.switchColor === b.switchColor &&
+    a.profile === b.profile &&
+    a.effects === b.effects &&
+    a.animationSpeed === b.animationSpeed,
+)
 
 Keycap.displayName = "Keycap"
