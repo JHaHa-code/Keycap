@@ -15,17 +15,3 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
     </div>
   )
 }
-
-export function StatsBar({ metrics }: { metrics: LiveMetrics }) {
-  const stats = useStore((s) => s.stats)
-  return (
-    <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-      <Stat icon={<Activity size={16} />} label="Keys / sec" value={String(metrics.kps)} />
-      <Stat icon={<Gauge size={16} />} label="Avg /sec" value={metrics.avgKps.toFixed(1)} />
-      <Stat icon={<Flame size={16} />} label="Streak" value={String(Math.max(metrics.streak, stats.maxStreak))} />
-      <Stat icon={<Hash size={16} />} label="Today" value={stats.today.toLocaleString()} />
-      <Stat icon={<Hash size={16} />} label="All time" value={stats.total.toLocaleString()} />
-      <Stat icon={<Flame size={16} />} label="Best streak" value={stats.maxStreak.toLocaleString()} />
-    </div>
-  )
-}
