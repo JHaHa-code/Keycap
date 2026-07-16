@@ -191,7 +191,7 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                 <div>
                   <p className="mb-2 text-sm text-muted-foreground">Sound quality</p>
                   <Segmented<SoundQuality>
-                    value={s.quality}
+                    value={"medium"}
                     onChange={(v) => s.set("quality", v)}
                     options={[
                       { value: "high", label: "High" },
