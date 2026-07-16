@@ -43,6 +43,20 @@ export function useSimulator() {
     engine.setSettings({ volume, reverb, pitchRandom, quality })
   }, [engine, volume, reverb, pitchRandom, quality])
 
+  // Unlock/resume the AudioContext on the first user gesture (autoplay policy).
+  useEffect(() => {
+    const unlock = () => engine.resume()
+    const opts = { passive: true } as AddEventListenerOptions
+    window.addEventListener("pointerdown", unlock, opts)
+    window.addEventListener("touchstart", unlock, opts)
+    window.addEventListener("keydown", unlock, opts)
+    return () => {
+      window.removeEventListener("pointerdown", unlock, opts)
+      window.removeEventListener("touchstart", unlock, opts)
+      window.removeEventListener("keydown", unlock, opts)
+    }
+  }, [engine])
+
   const setKey = useCallback((index: number, down: boolean) => {
     setPressed((prev) => {
       if (prev[index] === down) return prev

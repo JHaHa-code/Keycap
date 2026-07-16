@@ -77,7 +77,9 @@ export class AudioEngine {
     this.noiseBuffer = this.createNoise(0.4)
   }
 
+  /** Ensure the context exists and is running. Safe to call on every gesture. */
   resume() {
+    if (!this.ctx) this.init()
     if (this.ctx && this.ctx.state === "suspended") void this.ctx.resume()
   }
 
