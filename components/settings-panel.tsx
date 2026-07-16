@@ -194,9 +194,9 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                     value={"medium"}
                     onChange={(v) => s.set("quality", v)}
                     options={[
-                      { value: "medium", label: "High" },
+                      { value: "high", label: "High" },
                       { value: "medium", label: "Medium" },
-                      { value: "medium", label: "Low" },
+                      { value: "low", label: "Low" },
                     ]}
                   />
                 </div>
